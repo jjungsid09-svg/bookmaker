@@ -262,13 +262,11 @@
     starsEl.appendChild(s);
   }
 
-  // ====== 여기에 파이어베이스(Firebase) 데이터베이스 주소를 붙여넣으세요 ======
-  // 예: 'https://my-family-book-default-rtdb.firebaseio.com'
-  // 비워두면(따옴표만 있으면) 이 기기에만 저장돼요(가족 공유 안 됨).
-  var FIREBASE_DB_URL = 'https://bookmaker-a5f4f-default-rtdb.asia-southeast1.firebasedatabase.app';
-  // =======================================================================
-
-  var hasFirebase = !!FIREBASE_DB_URL;
+  // 파이어베이스 주소는 더 이상 여기 직접 넣지 않아요.
+  // Vercel의 Settings → Environment Variables 에 FIREBASE_DB_URL 을 등록하면,
+  // /api/config.js 를 통해 접속할 때 자동으로 안전하게 불러와요.
+  var FIREBASE_DB_URL = '';
+  var hasFirebase = false;
 
   function sanitizeName(name){
     // 파이어베이스 키에 쓸 수 없는 문자(. # $ [ ] /)를 제거
@@ -918,7 +916,23 @@
     if(e.key === 'ArrowLeft') goPrev();
   });
 
-  loadShelf();
+  async function loadFirebaseConfig(){
+    try{
+      var res = await fetch('/api/config');
+      if(res.ok){
+        var data = await res.json();
+        if(data && data.firebaseDbUrl){
+          FIREBASE_DB_URL = data.firebaseDbUrl;
+          hasFirebase = true;
+        }
+      }
+    }catch(e){
+      // /api/config 를 못 불러오면(예: 로컬에서 그냥 파일로 열었을 때) 이 기기 저장으로만 동작해요.
+    }
+    loadShelf();
+  }
+
+  loadFirebaseConfig();
 })();
 </script>
 </body>
