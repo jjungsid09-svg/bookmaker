@@ -78,10 +78,13 @@
     width:100%; padding:10px 12px; border-radius:8px; border:2px solid #E7DBBE;
     font-family:'Gowun Batang',serif; font-size:15px; margin-bottom:14px; box-sizing:border-box;
   }
+  .modal-error{ color:#C15C5C !important; font-size:12px !important; margin:-8px 0 12px !important; min-height:14px; text-align:left; }
   .modal-actions{ display:flex; gap:8px; }
+  .modal-actions.stacked{ flex-direction:column; }
   .modal-actions button{ flex:1; padding:10px; border-radius:8px; border:none; font-family:'Gaegu',sans-serif; font-weight:700; font-size:14.5px; cursor:pointer; }
   .modal-cancel{ background:#E9D6AE; color:var(--ink); }
   .modal-confirm{ background:var(--green); color:#fff; }
+  .modal-confirm.edit-variant{ background:var(--coral); }
 
   /* ---------- book screen ---------- */
   .book-screen{ display:flex; flex-direction:column; align-items:center; width:100%; }
@@ -90,6 +93,11 @@
     color:var(--navy-deep); font-family:'Gaegu',sans-serif; font-weight:700; font-size:14px; padding:7px 14px;
     border-radius:999px; cursor:pointer;
   }
+  .mode-badge{
+    align-self:flex-start; margin:-8px 0 14px; font-family:'Gaegu',sans-serif; font-weight:700; font-size:12.5px;
+    padding:4px 12px; border-radius:999px; background:#EFDCB0; color:#8A6B4F;
+  }
+  .mode-badge.edit{ background:#DCEBD1; color:#4E7A3A; }
 
   .stage{ perspective:2400px; width:clamp(260px, 82vw, 400px); aspect-ratio: 3 / 4.15; position:relative; }
   .book-shadow{
@@ -178,6 +186,7 @@
   .action-btn{ font-size:14px; color:#fff; padding:9px 16px; border-radius:999px; }
   .add-btn{ background:var(--green); }
   .del-btn{ background:#C15C5C; }
+  .book-del-btn{ background:#8B3A3A; }
   .export-btn{ background:#5D8B85; }
   .action-btn:disabled{ opacity:.35; cursor:default; }
 
@@ -214,6 +223,7 @@
   <!-- book screen -->
   <div class="book-screen hidden" id="bookScreen">
     <button class="back-btn" id="backBtn">← 책장으로</button>
+    <div class="mode-badge" id="modeBadge">읽기 전용</div>
     <div class="stage" id="stage">
       <div class="book-shadow"></div>
       <div class="book" id="book">
@@ -225,9 +235,10 @@
       <div class="indicator" id="indicator">표지</div>
       <button class="nav-btn" id="nextBtn" aria-label="다음 페이지">›</button>
     </div>
-    <div class="control-bar">
+    <div class="control-bar" id="editControlBar">
       <button class="action-btn add-btn" id="addBtn">+ 새 페이지</button>
       <button class="action-btn del-btn" id="delBtn">이 페이지 지우기</button>
+      <button class="action-btn book-del-btn" id="deleteBookBtn">🗑 책 삭제</button>
     </div>
     <div class="control-bar">
       <button class="action-btn export-btn" id="exportBtn">이 책 파일로 저장</button>
@@ -240,12 +251,56 @@
   <div class="modal-overlay hidden" id="nameModal">
     <div class="modal-box">
       <h3>이름이 뭐예요?</h3>
-      <p>같은 이름으로 다시 들어오면 쓰던 책을 이어서 쓸 수 있어요.</p>
+      <p>이름과 생일 4자리를 적어주세요. 생일은 나중에 이 책을 고치거나 지울 때 비밀번호처럼 쓰여요.</p>
       <input type="text" id="nameInput" placeholder="예: 민준" maxlength="20">
+      <input type="text" id="birthdayInput" placeholder="생일 4자리 (예: 0730)" maxlength="4" inputmode="numeric" pattern="[0-9]*">
       <input type="text" id="titleInput" placeholder="책 제목 (예: 민준이의 모험)" maxlength="24">
+      <p class="modal-error" id="nameError"></p>
       <div class="modal-actions">
         <button class="modal-cancel" id="nameCancel">취소</button>
         <button class="modal-confirm" id="nameConfirm">시작하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- action choose modal (책 보기 / 수정하기) -->
+  <div class="modal-overlay hidden" id="actionModal">
+    <div class="modal-box">
+      <h3 id="actionTitle">책 제목</h3>
+      <p>무엇을 하시겠어요?</p>
+      <div class="modal-actions stacked">
+        <button class="modal-confirm" id="actionView">📖 책 보기</button>
+        <button class="modal-confirm edit-variant" id="actionEdit">✏️ 수정하기</button>
+        <button class="modal-cancel" id="actionCancel">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- delete book confirm modal -->
+  <div class="modal-overlay hidden" id="deleteBookModal">
+    <div class="modal-box">
+      <h3>정말 삭제할까요?</h3>
+      <p>이 책은 완전히 사라지고 되돌릴 수 없어요. 생일 4자리를 다시 입력해서 확인해주세요.</p>
+      <input type="text" id="deleteBirthdayInput" placeholder="생일 4자리 (예: 0730)" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+      <p class="modal-error" id="deleteBookError"></p>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="deleteBookCancel">취소</button>
+        <button class="modal-confirm" id="deleteBookConfirm" style="background:#C15C5C;">삭제하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- edit auth modal -->
+  <div class="modal-overlay hidden" id="editAuthModal">
+    <div class="modal-box">
+      <h3>본인 확인</h3>
+      <p>수정하려면 이름과 생일 4자리를 정확히 입력해주세요.</p>
+      <input type="text" id="editNameInput" placeholder="이름" maxlength="20">
+      <input type="text" id="editBirthdayInput" placeholder="생일 4자리 (예: 0730)" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+      <p class="modal-error" id="editAuthError"></p>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="editAuthCancel">취소</button>
+        <button class="modal-confirm" id="editAuthConfirm">확인</button>
       </div>
     </div>
   </div>
@@ -299,6 +354,17 @@
     try{ localStorage.setItem('book:' + name, JSON.stringify(data)); return true; }
     catch(e){ return false; }
   }
+  async function bookDelete(name){
+    if(hasFirebase){
+      try{
+        var url = FIREBASE_DB_URL.replace(/\/$/,'') + '/books/' + encodeURIComponent(name) + '.json';
+        var res = await fetch(url, { method:'DELETE' });
+        return res.ok;
+      }catch(e){ return false; }
+    }
+    try{ localStorage.removeItem('book:' + name); return true; }
+    catch(e){ return false; }
+  }
   async function bookListAll(){
     if(hasFirebase){
       try{
@@ -337,6 +403,9 @@
     d.innerText = str || '';
     return d.innerHTML;
   }
+  function isValidBirthday(v){
+    return /^\d{4}$/.test(v || '');
+  }
 
   var COLORS = ['#4A3527','#E8734A','#F0AC4E','#8AA06B','#5D8B85','#B25FE3'];
   var SIZES = [3, 7, 13];
@@ -346,25 +415,54 @@
   var pages = null;
   var current = 0;
   var currentName = null;
+  var currentBirthday = null;
+  var viewMode = false;      // true면 읽기 전용(책 보기), false면 수정 가능(수정하기/새 책)
+  var pendingActionName = null; // 책장에서 고른 책 이름 (책 보기/수정하기 선택 대기중)
 
   var shelfScreen = document.getElementById('shelfScreen');
   var bookScreen = document.getElementById('bookScreen');
   var shelfList = document.getElementById('shelfList');
   var shelfStatus = document.getElementById('shelfStatus');
   var newBookBtn = document.getElementById('newBookBtn');
+
   var nameModal = document.getElementById('nameModal');
   var nameInput = document.getElementById('nameInput');
+  var birthdayInput = document.getElementById('birthdayInput');
   var titleInput = document.getElementById('titleInput');
+  var nameError = document.getElementById('nameError');
   var nameCancel = document.getElementById('nameCancel');
   var nameConfirm = document.getElementById('nameConfirm');
+
+  var actionModal = document.getElementById('actionModal');
+  var actionTitle = document.getElementById('actionTitle');
+  var actionView = document.getElementById('actionView');
+  var actionEdit = document.getElementById('actionEdit');
+  var actionCancel = document.getElementById('actionCancel');
+
+  var editAuthModal = document.getElementById('editAuthModal');
+  var editNameInput = document.getElementById('editNameInput');
+  var editBirthdayInput = document.getElementById('editBirthdayInput');
+  var editAuthError = document.getElementById('editAuthError');
+  var editAuthCancel = document.getElementById('editAuthCancel');
+  var editAuthConfirm = document.getElementById('editAuthConfirm');
+
+  var deleteBookModal = document.getElementById('deleteBookModal');
+  var deleteBirthdayInput = document.getElementById('deleteBirthdayInput');
+  var deleteBookError = document.getElementById('deleteBookError');
+  var deleteBookCancel = document.getElementById('deleteBookCancel');
+  var deleteBookConfirm = document.getElementById('deleteBookConfirm');
+
   var backBtn = document.getElementById('backBtn');
+  var modeBadge = document.getElementById('modeBadge');
 
   var bookEl = document.getElementById('book');
   var stageEl = document.getElementById('stage');
   var prevBtn = document.getElementById('prevBtn');
   var nextBtn = document.getElementById('nextBtn');
+  var editControlBar = document.getElementById('editControlBar');
   var addBtn = document.getElementById('addBtn');
   var delBtn = document.getElementById('delBtn');
+  var deleteBookBtn = document.getElementById('deleteBookBtn');
   var exportBtn = document.getElementById('exportBtn');
   var indicator = document.getElementById('indicator');
   var saveStatus = document.getElementById('saveStatus');
@@ -395,56 +493,135 @@
       card.innerHTML =
         '<span class="b-title">'+ escapeHtml(it.title) +'</span>' +
         '<span class="b-meta">'+ escapeHtml(it.author || '이름 없음') + ' · ' + relTime(it.updatedAt) +'</span>';
-      card.addEventListener('click', function(){ openBook(it.name); });
+      card.addEventListener('click', function(){
+        pendingActionName = it.name;
+        actionTitle.textContent = it.title;
+        actionModal.classList.remove('hidden');
+      });
       shelfList.appendChild(card);
     });
   }
 
+  // ---------- 새 책 만들기 ----------
   newBookBtn.addEventListener('click', function(){
     nameInput.value = '';
+    birthdayInput.value = '';
     titleInput.value = '';
+    nameError.textContent = '';
     nameModal.classList.remove('hidden');
     setTimeout(function(){ nameInput.focus(); }, 50);
   });
   nameCancel.addEventListener('click', function(){ nameModal.classList.add('hidden'); });
   nameModal.addEventListener('click', function(e){ if(e.target === nameModal) nameModal.classList.add('hidden'); });
-  nameInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') titleInput.focus(); });
+  nameInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') birthdayInput.focus(); });
+  birthdayInput.addEventListener('input', function(){
+    birthdayInput.value = birthdayInput.value.replace(/\D/g,'').slice(0,4);
+  });
+  birthdayInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') titleInput.focus(); });
   titleInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') nameConfirm.click(); });
 
   nameConfirm.addEventListener('click', async function(){
     var rawName = nameInput.value.trim();
-    if(!rawName){ nameInput.focus(); return; }
+    var birthday = birthdayInput.value.trim();
     var rawTitle = titleInput.value.trim() || '나의 이야기책';
-    nameModal.classList.add('hidden');
-    var name = sanitizeName(rawName);
-    var data = await bookGet(name);
-    if(data && data.pages){
-      pages = data.pages;
-    } else {
-      pages = [
-        { type:'cover', title:rawTitle, author:rawName },
-        { type:'content', text:'', drawing:null }
-      ];
+    nameError.textContent = '';
+
+    if(!rawName){ nameInput.focus(); return; }
+    if(!isValidBirthday(birthday)){
+      nameError.textContent = '생일 4자리를 숫자로 입력해주세요. (예: 7월 30일 → 0730)';
+      birthdayInput.focus();
+      return;
     }
+    var name = sanitizeName(rawName);
+    if(!name){ nameInput.focus(); return; }
+
+    var existing = await bookGet(name);
+    if(existing && existing.pages){
+      nameError.textContent = '이미 있는 이름이에요. 책장에서 그 책을 눌러 "수정하기"로 이어써주세요.';
+      return;
+    }
+
+    nameModal.classList.add('hidden');
+    pages = [
+      { type:'cover', title:rawTitle, author:rawName },
+      { type:'content', text:'', drawing:null }
+    ];
     currentName = name;
+    currentBirthday = birthday;
+    viewMode = false;
     current = 0;
     await saveCurrentBook();
     openBookScreen();
   });
 
-  async function openBook(name){
-    var data = await bookGet(name);
+  // ---------- 책장에서 책 선택: 책 보기 / 수정하기 ----------
+  actionModal.addEventListener('click', function(e){ if(e.target === actionModal) actionModal.classList.add('hidden'); });
+  actionCancel.addEventListener('click', function(){ actionModal.classList.add('hidden'); });
+
+  actionView.addEventListener('click', async function(){
+    actionModal.classList.add('hidden');
+    var data = await bookGet(pendingActionName);
     if(!data || !data.pages) return;
     pages = data.pages;
-    currentName = name;
+    currentName = pendingActionName;
+    currentBirthday = data.birthday || null;
+    viewMode = true;
     current = 0;
     openBookScreen();
-  }
+  });
+
+  actionEdit.addEventListener('click', function(){
+    actionModal.classList.add('hidden');
+    editNameInput.value = '';
+    editBirthdayInput.value = '';
+    editAuthError.textContent = '';
+    editAuthModal.classList.remove('hidden');
+    setTimeout(function(){ editNameInput.focus(); }, 50);
+  });
+
+  // ---------- 수정하기 본인 확인 ----------
+  editAuthModal.addEventListener('click', function(e){ if(e.target === editAuthModal) editAuthModal.classList.add('hidden'); });
+  editAuthCancel.addEventListener('click', function(){ editAuthModal.classList.add('hidden'); });
+  editNameInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') editBirthdayInput.focus(); });
+  editBirthdayInput.addEventListener('input', function(){
+    editBirthdayInput.value = editBirthdayInput.value.replace(/\D/g,'').slice(0,4);
+  });
+  editBirthdayInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') editAuthConfirm.click(); });
+
+  editAuthConfirm.addEventListener('click', async function(){
+    var enteredName = sanitizeName(editNameInput.value.trim());
+    var enteredBirthday = editBirthdayInput.value.trim();
+    editAuthError.textContent = '';
+
+    if(!enteredName || !isValidBirthday(enteredBirthday)){
+      editAuthError.textContent = '이름과 생일 4자리를 모두 입력해주세요.';
+      return;
+    }
+    if(enteredName !== pendingActionName){
+      editAuthError.textContent = '이름 또는 생일이 일치하지 않아요.';
+      return;
+    }
+    var data = await bookGet(pendingActionName);
+    if(!data || !data.pages || data.birthday !== enteredBirthday){
+      editAuthError.textContent = '이름 또는 생일이 일치하지 않아요.';
+      return;
+    }
+
+    editAuthModal.classList.add('hidden');
+    pages = data.pages;
+    currentName = pendingActionName;
+    currentBirthday = data.birthday;
+    viewMode = false;
+    current = 0;
+    openBookScreen();
+  });
 
   function openBookScreen(){
     shelfScreen.classList.add('hidden');
     bookScreen.classList.remove('hidden');
-    setStatus('자동으로 저장돼요');
+    modeBadge.textContent = viewMode ? '📖 읽기 전용' : '✏️ 수정 중';
+    modeBadge.classList.toggle('edit', !viewMode);
+    setStatus(viewMode ? '읽기 전용이에요. 저장되지 않아요.' : '자동으로 저장돼요');
     build();
   }
 
@@ -452,6 +629,9 @@
     bookScreen.classList.add('hidden');
     shelfScreen.classList.remove('hidden');
     currentName = null;
+    currentBirthday = null;
+    pendingActionName = null;
+    viewMode = false;
     pages = null;
     loadShelf();
   });
@@ -460,13 +640,14 @@
   var saveTimer = null;
   function setStatus(text){ saveStatus.textContent = text; }
   function scheduleSave(){
+    if(viewMode) return; // 읽기 전용에서는 저장하지 않음
     clearTimeout(saveTimer);
     setStatus('저장 중...');
     saveTimer = setTimeout(saveCurrentBook, 700);
   }
   async function saveCurrentBook(){
-    if(!currentName) return;
-    var ok = await bookSet(currentName, { pages: pages, updatedAt: Date.now() });
+    if(!currentName || viewMode) return;
+    var ok = await bookSet(currentName, { pages: pages, updatedAt: Date.now(), birthday: currentBirthday });
     setStatus(ok ? '저장됐어요' : '저장하지 못했어요');
   }
 
@@ -486,7 +667,6 @@
     if(p.drawing){
       var img = new Image();
       img.onload = function(){
-        // 늘려서 채우지 않고, 비율을 유지한 채 새 크기에 맞춰 다시 그려요 (잘림/찌그러짐 방지)
         var scale = Math.min(w / img.width, h / img.height);
         var dw = img.width * scale, dh = img.height * scale;
         var dx = (w - dw) / 2, dy = (h - dh) / 2;
@@ -494,6 +674,8 @@
       };
       img.src = p.drawing;
     }
+
+    if(viewMode) return; // 읽기 전용에서는 그리기 이벤트를 붙이지 않음
 
     var drawingNow = false;
     var last = null;
@@ -588,7 +770,7 @@
         var img = new Image();
         img.onload = function(){
           var ctx = canvas._ctx;
-          var pad = 0.92; // 살짝 여백을 둬서 가장자리에 딱 붙지 않게
+          var pad = 0.92;
           var boxW = canvas._w * pad, boxH = canvas._h * pad;
           var scale = Math.min(boxW / img.width, boxH / img.height);
           var w = img.width * scale, h = img.height * scale;
@@ -671,46 +853,53 @@
     if(p.type === 'cover'){
       front.classList.add('cover');
       front.innerHTML =
-        '<h1 contenteditable="true" data-placeholder="책 제목을 적어주세요">'+ escapeHtml(p.title) +'</h1>' +
-        '<div class="author" contenteditable="true" data-placeholder="지은이 이름을 적어주세요">'+ escapeHtml(p.author) +'</div>' +
+        '<h1 contenteditable="'+(!viewMode)+'" data-placeholder="책 제목을 적어주세요">'+ escapeHtml(p.title) +'</h1>' +
+        '<div class="author" contenteditable="'+(!viewMode)+'" data-placeholder="지은이 이름을 적어주세요">'+ escapeHtml(p.author) +'</div>' +
         '<button class="open-btn" type="button">책 펼치기</button>';
     } else {
       front.classList.add('content-page');
 
       if(p.hasDrawing === false){
-        var addDrawBtn = document.createElement('button');
-        addDrawBtn.type = 'button';
-        addDrawBtn.className = 'add-draw-btn';
-        addDrawBtn.textContent = '+ 그림칸 추가';
-        addDrawBtn.addEventListener('click', function(){
-          p.hasDrawing = true;
-          build();
-          scheduleSave();
-        });
-        front.appendChild(addDrawBtn);
+        if(!viewMode){
+          var addDrawBtn = document.createElement('button');
+          addDrawBtn.type = 'button';
+          addDrawBtn.className = 'add-draw-btn';
+          addDrawBtn.textContent = '+ 그림칸 추가';
+          addDrawBtn.addEventListener('click', function(){
+            p.hasDrawing = true;
+            build();
+            scheduleSave();
+          });
+          front.appendChild(addDrawBtn);
+        }
       } else {
         var drawSlot = document.createElement('div');
         drawSlot.className = 'draw-slot';
         drawSlot.style.height = (p.slotHeight || 46) + '%';
         var canvas = document.createElement('canvas');
         canvas.className = 'draw-canvas';
-        var toolbar = buildToolbar(p, canvas, drawSlot);
-        if(toolbarCollapsed) toolbar.classList.add('collapsed');
+        if(viewMode){
+          canvas.style.pointerEvents = 'none';
+          canvas.style.cursor = 'default';
+        } else {
+          var toolbar = buildToolbar(p, canvas, drawSlot);
+          if(toolbarCollapsed) toolbar.classList.add('collapsed');
 
-        var toggleBar = document.createElement('button');
-        toggleBar.type = 'button';
-        toggleBar.className = 'toolbar-toggle';
-        toggleBar.textContent = toolbarCollapsed ? '🎨 도구 펼치기 ▾' : '🎨 도구 접기 ▴';
-        toggleBar.addEventListener('click', function(e){
-          e.stopPropagation();
-          toolbarCollapsed = !toolbarCollapsed;
-          toolbar.classList.toggle('collapsed', toolbarCollapsed);
+          var toggleBar = document.createElement('button');
+          toggleBar.type = 'button';
+          toggleBar.className = 'toolbar-toggle';
           toggleBar.textContent = toolbarCollapsed ? '🎨 도구 펼치기 ▾' : '🎨 도구 접기 ▴';
-          initCanvas(p, canvas);
-        });
+          toggleBar.addEventListener('click', function(e){
+            e.stopPropagation();
+            toolbarCollapsed = !toolbarCollapsed;
+            toolbar.classList.toggle('collapsed', toolbarCollapsed);
+            toggleBar.textContent = toolbarCollapsed ? '🎨 도구 펼치기 ▾' : '🎨 도구 접기 ▴';
+            initCanvas(p, canvas);
+          });
 
-        drawSlot.appendChild(toggleBar);
-        drawSlot.appendChild(toolbar);
+          drawSlot.appendChild(toggleBar);
+          drawSlot.appendChild(toolbar);
+        }
         drawSlot.appendChild(canvas);
         front.appendChild(drawSlot);
         pendingCanvasInit = function(){ initCanvas(p, canvas); };
@@ -718,21 +907,23 @@
 
       var story = document.createElement('div');
       story.className = 'story-text';
-      story.contentEditable = 'true';
+      story.contentEditable = viewMode ? 'false' : 'true';
       story.setAttribute('data-placeholder', '여기에 이야기를 적어보세요...');
       story.innerText = p.text || '';
       if(!p.text) story.classList.add('is-empty');
-      story.addEventListener('input', function(){
-        p.text = story.innerText;
-        story.classList.toggle('is-empty', story.innerText.trim() === '');
-        scheduleSave();
-        applyCoverMood();
-      });
-      story.addEventListener('paste', function(e){
-        e.preventDefault();
-        var text = (e.clipboardData || window.clipboardData).getData('text/plain');
-        document.execCommand('insertText', false, text);
-      });
+      if(!viewMode){
+        story.addEventListener('input', function(){
+          p.text = story.innerText;
+          story.classList.toggle('is-empty', story.innerText.trim() === '');
+          scheduleSave();
+          applyCoverMood();
+        });
+        story.addEventListener('paste', function(e){
+          e.preventDefault();
+          var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+          document.execCommand('insertText', false, text);
+        });
+      }
 
       front.appendChild(story);
     }
@@ -750,6 +941,8 @@
   function build(){
     var olds = bookEl.querySelectorAll('.page');
     olds.forEach(function(el){ el.remove(); });
+    editControlBar.classList.toggle('hidden', viewMode);
+
     pages.forEach(function(p, i){
       var el = makePageEl(p, i);
       if(i < current) el.classList.add('flipped');
@@ -763,21 +956,25 @@
       var titleEl = el.querySelector('h1');
       if(titleEl){
         titleEl.classList.toggle('is-empty', titleEl.innerText.trim()==='');
-        titleEl.addEventListener('input', function(){
-          p.title = titleEl.innerText;
-          titleEl.classList.toggle('is-empty', titleEl.innerText.trim()==='');
-          scheduleSave();
-          applyCoverMood();
-        });
+        if(!viewMode){
+          titleEl.addEventListener('input', function(){
+            p.title = titleEl.innerText;
+            titleEl.classList.toggle('is-empty', titleEl.innerText.trim()==='');
+            scheduleSave();
+            applyCoverMood();
+          });
+        }
       }
       var authorEl = el.querySelector('.author');
       if(authorEl){
         authorEl.classList.toggle('is-empty', authorEl.innerText.trim()==='');
-        authorEl.addEventListener('input', function(){
-          p.author = authorEl.innerText;
-          authorEl.classList.toggle('is-empty', authorEl.innerText.trim()==='');
-          scheduleSave();
-        });
+        if(!viewMode){
+          authorEl.addEventListener('input', function(){
+            p.author = authorEl.innerText;
+            authorEl.classList.toggle('is-empty', authorEl.innerText.trim()==='');
+            scheduleSave();
+          });
+        }
       }
     });
     updateUI();
@@ -846,6 +1043,7 @@
   nextBtn.addEventListener('click', goNext);
 
   addBtn.addEventListener('click', function(){
+    if(viewMode) return;
     pages.splice(current + 1, 0, { type:'content', text:'', drawing:null });
     current = current + 1;
     build();
@@ -855,6 +1053,7 @@
   var delArmed = false;
   var delArmTimer = null;
   delBtn.addEventListener('click', function(){
+    if(viewMode) return;
     if(pages[current].type === 'cover') return;
     var contentCount = pages.filter(function(p){ return p.type==='content'; }).length;
     if(contentCount <= 1){
@@ -877,6 +1076,45 @@
     if(current > pages.length - 1) current = pages.length - 1;
     build();
     scheduleSave();
+  });
+
+  // ---------- 책 전체 삭제 ----------
+  deleteBookBtn.addEventListener('click', function(){
+    if(viewMode) return;
+    deleteBirthdayInput.value = '';
+    deleteBookError.textContent = '';
+    deleteBookModal.classList.remove('hidden');
+    setTimeout(function(){ deleteBirthdayInput.focus(); }, 50);
+  });
+  deleteBookModal.addEventListener('click', function(e){ if(e.target === deleteBookModal) deleteBookModal.classList.add('hidden'); });
+  deleteBookCancel.addEventListener('click', function(){ deleteBookModal.classList.add('hidden'); });
+  deleteBirthdayInput.addEventListener('input', function(){
+    deleteBirthdayInput.value = deleteBirthdayInput.value.replace(/\D/g,'').slice(0,4);
+  });
+  deleteBirthdayInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') deleteBookConfirm.click(); });
+
+  deleteBookConfirm.addEventListener('click', async function(){
+    var entered = deleteBirthdayInput.value.trim();
+    deleteBookError.textContent = '';
+    if(!isValidBirthday(entered)){
+      deleteBookError.textContent = '생일 4자리를 숫자로 입력해주세요.';
+      return;
+    }
+    if(entered !== currentBirthday){
+      deleteBookError.textContent = '생일이 일치하지 않아요.';
+      return;
+    }
+    deleteBookModal.classList.add('hidden');
+    clearTimeout(saveTimer);
+    await bookDelete(currentName);
+    currentName = null;
+    currentBirthday = null;
+    pendingActionName = null;
+    viewMode = false;
+    pages = null;
+    bookScreen.classList.add('hidden');
+    shelfScreen.classList.remove('hidden');
+    loadShelf();
   });
 
   exportBtn.addEventListener('click', function(){
